@@ -1,0 +1,44 @@
+---
+name: Unit tests
+
+on:
+  push:
+    branches: [ MODULES-10800 ]
+  pull_request:
+    branches: [ MODULES-10800 ]
+
+jobs:
+  linux_unit_tests:
+    name: Ruby version
+
+    strategy:
+      matrix:
+        os: [ 'ubuntu-18.04', 'windows-2019']
+        ruby: [ 2.5, 2.7 ]
+        include:
+          - ruby: 2.5
+            puppet_gem_version: "~> 5.0"
+          - ruby: 2.7
+            puppet_gem_version: "~> 6.0"
+
+    runs-on: ${{ matrix.os }}
+    env:
+      CHECK: parallel_spec
+      PUPPET_GEM_VERSION: ${{ matrix.puppet_gem_version }}
+
+    steps:
+      - name: Checkout current PR
+        uses: actions/checkout@v2
+
+      - name: Setup ruby
+        uses: ruby/setup-ruby@ec106b438a1ff6ff109590de34ddc62c540232e0
+        with:
+          ruby-version: ${{ matrix.ruby }}
+
+      - name: Setup bundler
+        run: |
+          gem update bundler --force
+          bundle install --jobs 3 --retry 3 --without packaging documentation
+      
+      - name: Run tests
+        run: bundle exec rake check
